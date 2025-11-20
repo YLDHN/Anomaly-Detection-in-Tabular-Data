@@ -222,7 +222,6 @@ Toutes ces anomalies correspondent aux vraies étiquettes (true_label=1).
 **Recommandation:** Le code est **production-ready** pour Isolation Forest et One-Class SVM.
 
 ---
-
-**Testé par:** Copilot  
+  
 **Date:** 20 novembre 2025  
 **Environnement:** macOS, Python 3.14, scikit-learn 1.6.1
