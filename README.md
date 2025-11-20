@@ -665,7 +665,6 @@ Si ce projet vous a aidé, n'hésitez pas à lui donner une ⭐ !
 
 ---
 
-**Créé avec ❤️ par GitHub Copilot**  
 **Version:** 2.0 - Avec Autoencodeur  
 **Date:** Novembre 2025  
 **Statut:** ✅ Production-Ready - Note 10/10
