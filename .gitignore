@@ -1,0 +1,77 @@
+# .gitignore pour le projet de détection d'anomalies
+
+# Données
+data/*.csv
+data/*.xlsx
+data/*.json
+data/*.parquet
+!data/.gitkeep
+
+# Modèles entraînés
+models/*.pkl
+models/*.h5
+models/*.keras
+!models/.gitkeep
+
+# Résultats
+results/
+*.png
+*.jpg
+*.pdf
+
+# Notebooks checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environnements virtuels
+venv/
+ENV/
+env/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints
+
+# TensorFlow
+*.h5
+*.hdf5
+events.out.tfevents.*
