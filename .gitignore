@@ -6,6 +6,8 @@ data/*.xlsx
 data/*.json
 data/*.parquet
 !data/.gitkeep
+*.csv
+*.xlsx
 
 # Modèles entraînés
 models/*.pkl
@@ -47,6 +49,7 @@ wheels/
 
 # Environnements virtuels
 venv/
+venv_autoencoder/
 ENV/
 env/
 .venv
