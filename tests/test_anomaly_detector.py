@@ -5,6 +5,7 @@ Exécuter avec: pytest tests/test_anomaly_detector.py -v
 
 import pytest
 import numpy as np
+import pandas as pd
 from pathlib import Path
 import sys
 
@@ -15,6 +16,8 @@ from src.anomaly_detector import (
     OneClassSVMDetector,
     compare_detectors
 )
+from src.data_loader import load_data
+from src.preprocessor import preprocess_data
 
 
 class TestIsolationForestDetector:
@@ -187,6 +190,64 @@ class TestModelPersistence:
         pred2 = detector2.predict(X)
         
         np.testing.assert_array_equal(pred1, pred2)
+
+
+class TestDetectorsWithRealData:
+    """Tests des détecteurs avec le dataset réel Fraud Detection."""
+    
+    @pytest.fixture
+    def real_data(self):
+        """Charge le dataset réel Fraud Detection et le prétraite."""
+        data_path = Path(__file__).parent.parent / 'data' / 'Fraud Detection Transactions Dataset.csv'
+        if not data_path.exists():
+            pytest.skip("Fichier Fraud Detection Dataset non trouvé")
+        
+        df = load_data(str(data_path))
+        # Ajouter true_label si Fraud_Label existe
+        if 'Fraud_Label' in df.columns:
+            df['true_label'] = df['Fraud_Label']
+        
+        # Prétraiter les données
+        exclude_cols = ['Transaction_ID', 'User_ID', 'Timestamp', 'IP_Address_Flag', 'true_label', 'Fraud_Label']
+        X = preprocess_data(df, exclude_columns=exclude_cols, numeric_scaling='standard', return_preprocessor=False)
+        
+        # Prendre un échantillon pour les tests (plus rapide)
+        n_samples = min(1000, X.shape[0])
+        X_sample = X[:n_samples]
+        y_true = df['true_label'].values[:n_samples] if 'true_label' in df.columns else None
+        
+        return X_sample, y_true
+    
+    def test_isolation_forest_with_real_data(self, real_data):
+        """Test Isolation Forest avec données réelles."""
+        X, y_true = real_data
+        
+        detector = IsolationForestDetector(contamination=0.1)
+        predictions = detector.fit_predict(X)
+        
+        assert len(predictions) == X.shape[0]
+        assert detector.is_fitted
+        assert -1 in predictions or 1 in predictions
+    
+    def test_ocsvm_with_real_data(self, real_data):
+        """Test One-Class SVM avec données réelles."""
+        X, y_true = real_data
+        
+        detector = OneClassSVMDetector(nu=0.1)
+        predictions = detector.fit_predict(X)
+        
+        assert len(predictions) == X.shape[0]
+        assert detector.is_fitted
+        assert -1 in predictions or 1 in predictions
+    
+    def test_compare_with_real_data(self, real_data):
+        """Test la comparaison des modèles avec données réelles."""
+        X, y_true = real_data
+        
+        results = compare_detectors(X, y_true=y_true, contamination=0.1)
+        
+        assert len(results) >= 2
+        assert isinstance(results, dict)
 
 
 if __name__ == '__main__':

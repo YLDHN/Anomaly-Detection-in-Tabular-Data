@@ -50,9 +50,9 @@ fi
 echo -e "${BLUE}► Activation de l'environnement avec TensorFlow...${NC}"
 source venv_autoencoder/bin/activate
 
-# Vérifier TensorFlow
+# Vérifier TensorFlow avec gestion d'erreur
 echo -e "${BLUE}► Vérification de TensorFlow...${NC}"
-python3 << 'EOF'
+if python3 << 'EOF' 2>/dev/null
 import tensorflow as tf
 print(f"✅ TensorFlow {tf.__version__}")
 gpus = tf.config.list_physical_devices('GPU')
@@ -61,44 +61,83 @@ if gpus:
 else:
     print("ℹ️  Mode CPU (pas de GPU)")
 EOF
+then
+    # TensorFlow fonctionne
+    USE_AUTOENCODER=1
+else
+    # TensorFlow ne fonctionne pas
+    USE_AUTOENCODER=0
+    echo -e "${YELLOW}⚠️  TensorFlow ne fonctionne pas sur cet environnement${NC}"
+    echo "Cause possible: Dépendances binaires manquantes sur macOS ARM64"
+    echo ""
+    echo "Continuation avec Isolation Forest et One-Class SVM..."
+    echo ""
+    USE_AUTOENCODER=0
+fi
 
 echo ""
 
-# Démo 1: Dataset synthétique avec les 3 modèles
-echo -e "${GREEN}"
-echo "═══════════════════════════════════════════════════════════════════════"
-echo "  DÉMO 1: Comparaison des 3 algorithmes sur données synthétiques"
-echo "═══════════════════════════════════════════════════════════════════════"
-echo -e "${NC}"
+if [ $USE_AUTOENCODER -eq 1 ]; then
+    # Démo 1: Dataset synthétique avec les 3 modèles
+    echo -e "${GREEN}"
+    echo "═══════════════════════════════════════════════════════════════════════"
+    echo "  DÉMO 1: Comparaison des 3 algorithmes sur données synthétiques"
+    echo "═══════════════════════════════════════════════════════════════════════"
+    echo -e "${NC}"
 
-python main.py --synthetic --model all --contamination 0.1 --no-visualizations --n-samples 1000
+    python main.py --synthetic --model all --contamination 0.1 --no-visualizations --n-samples 1000
 
-echo ""
-echo -e "${BLUE}Appuyez sur Entrée pour continuer...${NC}"
-read
+    echo ""
+    echo -e "${BLUE}Appuyez sur Entrée pour continuer...${NC}"
+    read
 
-# Démo 2: Autoencodeur avec différents hyperparamètres
-echo -e "${GREEN}"
-echo "═══════════════════════════════════════════════════════════════════════"
-echo "  DÉMO 2: Autoencodeur avec optimisation des hyperparamètres"
-echo "═══════════════════════════════════════════════════════════════════════"
-echo -e "${NC}"
+    # Démo 2: Autoencodeur avec différents hyperparamètres
+    echo -e "${GREEN}"
+    echo "═══════════════════════════════════════════════════════════════════════"
+    echo "  DÉMO 2: Autoencodeur avec optimisation des hyperparamètres"
+    echo "═══════════════════════════════════════════════════════════════════════"
+    echo -e "${NC}"
 
-echo "Test 1: Autoencodeur avec 50 epochs"
-python main.py --synthetic --model autoencoder --epochs 50 --encoding-dim 8 --no-visualizations --n-samples 500
+    echo "Test 1: Autoencodeur avec 50 epochs"
+    python main.py --synthetic --model autoencoder --epochs 50 --encoding-dim 8 --no-visualizations --n-samples 500
 
-echo ""
-echo "Test 2: Autoencodeur avec dimension latente plus grande"
-python main.py --synthetic --model autoencoder --epochs 30 --encoding-dim 16 --no-visualizations --n-samples 500
+    echo ""
+    echo "Test 2: Autoencodeur avec dimension latente plus grande"
+    python main.py --synthetic --model autoencoder --epochs 30 --encoding-dim 16 --no-visualizations --n-samples 500
 
-echo ""
-echo -e "${BLUE}Appuyez sur Entrée pour continuer...${NC}"
-read
+    echo ""
+    echo -e "${BLUE}Appuyez sur Entrée pour continuer...${NC}"
+    read
+else
+    # Mode sans Autoencodeur - Utiliser les modèles qui fonctionnent
+    echo -e "${GREEN}"
+    echo "═══════════════════════════════════════════════════════════════════════"
+    echo "  DÉMO 1: Isolation Forest et One-Class SVM (synthétique)"
+    echo "═══════════════════════════════════════════════════════════════════════"
+    echo -e "${NC}"
+
+    python main.py --synthetic --model isolation_forest --contamination 0.1 --no-visualizations --n-samples 1000
+
+    echo ""
+    echo -e "${GREEN}═══════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}  DÉMO 2: One-Class SVM${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════════════════════════════════${NC}"
+
+    python main.py --synthetic --model onesvm --contamination 0.1 --no-visualizations --n-samples 1000
+
+    echo ""
+    echo -e "${BLUE}Appuyez sur Entrée pour continuer...${NC}"
+    read
+fi
 
 # Démo 3: Comparaison sur fichier CSV
 echo -e "${GREEN}"
 echo "═══════════════════════════════════════════════════════════════════════"
-echo "  DÉMO 3: Analyse d'un fichier CSV avec les 3 modèles"
+if [ $USE_AUTOENCODER -eq 1 ]; then
+    echo "  DÉMO 3: Analyse d'un fichier CSV avec les 3 modèles"
+else
+    echo "  DÉMO 3: Analyse d'un fichier CSV avec IF et OCSVM"
+fi
 echo "═══════════════════════════════════════════════════════════════════════"
 echo -e "${NC}"
 
@@ -121,9 +160,11 @@ echo ""
 echo "Analyse avec One-Class SVM..."
 python main.py --data data/demo_data.csv --model onesvm --true-label-column true_label --output results_demo --no-visualizations
 
-echo ""
-echo "Analyse avec Autoencodeur..."
-python main.py --data data/demo_data.csv --model autoencoder --true-label-column true_label --output results_demo --no-visualizations --epochs 40
+if [ $USE_AUTOENCODER -eq 1 ]; then
+    echo ""
+    echo "Analyse avec Autoencodeur..."
+    python main.py --data data/demo_data.csv --model autoencoder --true-label-column true_label --output results_demo --no-visualizations --epochs 40
+fi
 
 echo ""
 echo -e "${BLUE}Appuyez sur Entrée pour voir les résultats...${NC}"
@@ -143,7 +184,7 @@ echo ""
 echo -e "${GREEN}"
 echo "╔════════════════════════════════════════════════════════════════════════╗"
 echo "║                                                                        ║"
-echo "║   ✅ DÉMONSTRATION COMPLÈTE TERMINÉE !                                 ║"
+echo "║   ✅ DÉMONSTRATION TERMINÉE !                                          ║"
 echo "║                                                                        ║"
 echo "╚════════════════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
@@ -152,12 +193,24 @@ echo ""
 echo "📁 Fichiers générés:"
 echo "   - results_demo/anomaly_report_isolation_forest.csv"
 echo "   - results_demo/anomaly_report_onesvm.csv"
-echo "   - results_demo/anomaly_report_autoencoder.csv"
+if [ $USE_AUTOENCODER -eq 1 ]; then
+    echo "   - results_demo/anomaly_report_autoencoder.csv"
+fi
 echo "   - results_demo/model_comparison.csv"
 echo ""
-echo "🎯 Les 3 algorithmes sont maintenant pleinement fonctionnels!"
+
+if [ $USE_AUTOENCODER -eq 1 ]; then
+    echo "🎯 Les 3 algorithmes sont maintenant pleinement fonctionnels!"
+else
+    echo "🎯 Isolation Forest et One-Class SVM sont fonctionnels!"
+    echo ""
+    echo "⚠️  Note: TensorFlow/Autoencodeur ne fonctionne pas sur cet environnement"
+    echo "   Pour activer l'Autoencodeur sur macOS ARM64:"
+    echo "   https://github.com/issues/tensorflow"
+fi
+
 echo ""
-echo "Pour utiliser l'Autoencodeur dans vos propres scripts:"
-echo "  1. Activez l'environnement: source venv_autoencoder/bin/activate"
+echo "Pour utiliser le projet dans vos propres scripts:"
+echo "  1. Activez un environnement: source venv/bin/activate"
 echo "  2. Lancez votre script Python"
 echo ""

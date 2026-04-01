@@ -15,6 +15,9 @@ from src.evaluator import (
     evaluate_predictions,
     generate_anomaly_report
 )
+from src.data_loader import load_data
+from src.preprocessor import preprocess_data
+from src.anomaly_detector import IsolationForestDetector
 
 
 class TestEvaluatePredictions:
@@ -157,6 +160,58 @@ class TestMetricsEdgeCases:
         # Ne devrait pas lever d'exception
         metrics = evaluate_predictions(y_true, y_pred)
         assert metrics['total_samples'] == 0
+
+
+class TestEvaluationWithRealData:
+    """Tests de l'évaluation avec le dataset réel Fraud Detection."""
+    
+    @pytest.fixture
+    def real_data_with_predictions(self):
+        """Charge les données réelles et génère des prédictions."""
+        data_path = Path(__file__).parent.parent / 'data' / 'Fraud Detection Transactions Dataset.csv'
+        if not data_path.exists():
+            pytest.skip("Fichier Fraud Detection Dataset non trouvé")
+        
+        df = load_data(str(data_path))
+        
+        # Préparer les données
+        exclude_cols = ['Transaction_ID', 'User_ID', 'Timestamp', 'IP_Address_Flag', 'Fraud_Label']
+        n_samples = min(500, df.shape[0])  # Moins d'échantillons pour plus de vitesse
+        df_sample = df.iloc[:n_samples].copy()
+        
+        X = preprocess_data(df_sample, exclude_columns=exclude_cols, numeric_scaling='standard', return_preprocessor=False)
+        y_true = df_sample['Fraud_Label'].values if 'Fraud_Label' in df_sample.columns else None
+        
+        # Générer des prédictions avec Isolation Forest
+        detector = IsolationForestDetector(contamination=0.1)
+        predictions = detector.fit_predict(X)
+        scores = detector.get_anomaly_scores(X)
+        
+        return df_sample, predictions, scores, y_true
+    
+    def test_evaluate_with_real_data(self, real_data_with_predictions):
+        """Test de l'évaluation avec données réelles."""
+        df, predictions, scores, y_true = real_data_with_predictions
+        
+        if y_true is not None:
+            # Convertir 0/1 en -1/1 si nécessaire
+            y_true_adjusted = np.where(y_true == 0, 1, -1)
+            metrics = evaluate_predictions(y_true_adjusted, predictions, "Isolation Forest")
+            
+            assert 'precision' in metrics
+            assert 'recall' in metrics
+            assert 'f1_score' in metrics
+            assert metrics['total_samples'] == len(predictions)
+    
+    def test_anomaly_report_with_real_data(self, real_data_with_predictions):
+        """Test de la génération de rapport avec données réelles."""
+        df, predictions, scores, y_true = real_data_with_predictions
+        
+        report = generate_anomaly_report(df, predictions, scores, top_n=10)
+        
+        assert len(report) > 0
+        assert 'anomaly_score' in report.columns
+        assert all(report['anomaly_score'].notna())
 
 
 if __name__ == '__main__':

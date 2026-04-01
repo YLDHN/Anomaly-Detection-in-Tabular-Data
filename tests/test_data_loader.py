@@ -66,6 +66,18 @@ class TestLoadData:
         finally:
             os.unlink(temp_path)
     
+    def test_load_fraud_detection_dataset(self):
+        """Test de chargement du dataset Fraud Detection réel."""
+        data_path = Path(__file__).parent.parent / 'data' / 'Fraud Detection Transactions Dataset.csv'
+        if data_path.exists():
+            df = load_data(str(data_path))
+            assert len(df) > 0
+            assert 'Fraud_Label' in df.columns
+            assert 'Transaction_ID' in df.columns
+            assert df.shape[1] > 10  # Vérifier qu'il y a plusieurs colonnes
+        else:
+            pytest.skip("Fichier Fraud Detection Dataset non trouvé")
+    
     def test_load_unsupported_format(self):
         """Test avec un format non supporté."""
         with pytest.raises(ValueError):

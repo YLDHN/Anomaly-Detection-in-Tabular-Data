@@ -17,6 +17,7 @@ from src.preprocessor import (
     split_train_test,
     create_feature_summary
 )
+from src.data_loader import load_data
 
 
 class TestDataPreprocessor:
@@ -182,6 +183,52 @@ class TestCreateFeatureSummary:
         assert 'Feature' in summary.columns
         assert 'Type' in summary.columns
         assert 'Null' in summary.columns
+
+
+class TestPreprocessingWithRealData:
+    """Tests du prétraitement avec le dataset réel Fraud Detection."""
+    
+    @pytest.fixture
+    def real_data(self):
+        """Charge le dataset réel Fraud Detection."""
+        data_path = Path(__file__).parent.parent / 'data' / 'Fraud Detection Transactions Dataset.csv'
+        if not data_path.exists():
+            pytest.skip("Fichier Fraud Detection Dataset non trouvé")
+        
+        df = load_data(str(data_path))
+        return df.iloc[:500].copy()  # Prendre un échantillon
+    
+    def test_preprocess_real_data(self, real_data):
+        """Test du prétraitement avec données réelles."""
+        exclude_cols = ['Transaction_ID', 'User_ID', 'Timestamp', 'IP_Address_Flag', 'Fraud_Label']
+        
+        X = preprocess_data(real_data, exclude_columns=exclude_cols, numeric_scaling='standard', return_preprocessor=False)
+        
+        assert X.shape[0] == real_data.shape[0]
+        assert X.shape[1] > 0
+        assert isinstance(X, np.ndarray)
+    
+    def test_preprocessor_with_real_data(self, real_data):
+        """Test de la classe DataPreprocessor avec données réelles."""
+        exclude_cols = ['Transaction_ID', 'User_ID', 'Timestamp', 'IP_Address_Flag', 'Fraud_Label']
+        
+        preprocessor = DataPreprocessor(numeric_scaling='standard', categorical_encoding='onehot')
+        X = preprocessor.fit_transform(real_data, exclude_columns=exclude_cols)
+        
+        assert preprocessor.is_fitted
+        assert X.shape[0] == real_data.shape[0]
+        
+        # Vérifier les noms de features
+        feature_names = preprocessor.get_feature_names()
+        assert len(feature_names) == X.shape[1]
+    
+    def test_train_test_split_real_data(self, real_data):
+        """Test du split train/test avec données réelles."""
+        train_df, test_df = split_train_test(real_data, test_size=0.2, random_state=42)
+        
+        assert len(train_df) + len(test_df) == len(real_data)
+        assert len(train_df) == int(len(real_data) * 0.8)
+        assert len(test_df) == int(len(real_data) * 0.2)
 
 
 if __name__ == '__main__':

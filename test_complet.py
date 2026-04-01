@@ -7,7 +7,7 @@ Démontre toutes les fonctionnalités du projet.
 import sys
 sys.path.insert(0, 'src')
 
-from src.data_loader import create_sample_dataset, handle_missing_values, analyze_missing_values
+from src.data_loader import load_data, handle_missing_values, analyze_missing_values
 from src.preprocessor import preprocess_data, split_train_test
 from src.anomaly_detector import IsolationForestDetector, OneClassSVMDetector
 from src.evaluator import evaluate_predictions, generate_anomaly_report
@@ -22,9 +22,12 @@ print("=" * 80)
 # === 1. CHARGEMENT DES DONNÉES ===
 print("\n📥 ÉTAPE 1: CHARGEMENT DES DONNÉES")
 print("-" * 80)
-df = create_sample_dataset(n_samples=1000, n_features=5, contamination=0.1)
-print(f"✅ Dataset créé: {df.shape[0]} échantillons, {df.shape[1]} colonnes")
-print(f"   Anomalies réelles: {df['true_label'].sum()} ({df['true_label'].sum()/len(df)*100:.1f}%)")
+df = load_data('data/Fraud Detection Transactions Dataset.csv')
+print(f"✅ Dataset chargé: {df.shape[0]} échantillons, {df.shape[1]} colonnes")
+# Utiliser la colonne Fraud_Label comme true_label si elle existe
+if 'Fraud_Label' in df.columns:
+    df['true_label'] = df['Fraud_Label'].copy()
+    print(f"   Anomalies réelles: {df['true_label'].sum()} ({df['true_label'].sum()/len(df)*100:.1f}%)")
 
 # === 2. ANALYSE ET NETTOYAGE ===
 print("\n🔍 ÉTAPE 2: ANALYSE DES VALEURS MANQUANTES")
@@ -41,11 +44,13 @@ print(f"✅ Données nettoyées: {df_cleaned.shape}")
 # === 3. PRÉTRAITEMENT ===
 print("\n⚙️  ÉTAPE 3: PRÉTRAITEMENT")
 print("-" * 80)
+# Pour le CSV réel, exclure les colonnes correspondantes
+exclude_cols = ['Transaction_ID', 'User_ID', 'Timestamp', 'IP_Address_Flag', 'true_label', 'Fraud_Label']
 X, preprocessor = preprocess_data(
     df_cleaned,
     numeric_scaling='standard',
     categorical_encoding='onehot',
-    exclude_columns=['id', 'true_label'],
+    exclude_columns=exclude_cols,
     return_preprocessor=True
 )
 print(f"✅ Données transformées: {X.shape}")
@@ -57,9 +62,9 @@ print(f"   Colonnes catégorielles: {len(preprocessor.categorical_columns)}")
 print("\n✂️  ÉTAPE 4: SPLIT TRAIN/TEST")
 print("-" * 80)
 train_df, test_df = split_train_test(df_cleaned, test_size=0.2, random_state=42)
-X_train, _ = preprocess_data(train_df, exclude_columns=['id', 'true_label'], 
+X_train, _ = preprocess_data(train_df, exclude_columns=exclude_cols, 
                               numeric_scaling='standard', return_preprocessor=True)
-X_test, _ = preprocess_data(test_df, exclude_columns=['id', 'true_label'],
+X_test, _ = preprocess_data(test_df, exclude_columns=exclude_cols,
                              numeric_scaling='standard', return_preprocessor=True)
 print(f"✅ Train: {X_train.shape[0]} échantillons")
 print(f"✅ Test:  {X_test.shape[0]} échantillons")
